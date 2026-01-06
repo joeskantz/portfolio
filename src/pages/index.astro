@@ -1,11 +1,31 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+import BaseLayout from "../layouts/BaseLayout.astro";
+import headshot from "../assets/headshot.png";
 ---
 
-<Layout>
-	<Welcome />
-</Layout>
+<BaseLayout title="Home">
+	<div class="headshot-wrapper">
+		<img src={headshot.src} class="headshot"/>
+	</div>
+	<h1>Joseph Skantz</h1>
+	<h4>M.S. in Computer Science, University of Wisconsin-Madison (May 2027)</h4>
+	<h4>Software Engineer Intern at <a href=Work>AbbVie </a></h4>
+
+	<style>
+		.headshot-wrapper {
+			width: 160px;
+			height: 160px;
+			border-radius: 50%;
+			overflow: hidden;
+			border: 3px solid #ffffffff;
+		}
+
+		.headshot-wrapper img {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+			object-position: center 45%;
+			transform: scale(1.3);
+		}
+	</style>
+</BaseLayout>
