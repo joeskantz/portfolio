@@ -1,18 +1,26 @@
 ---
+import "@fortawesome/fontawesome-free/css/all.min.css";
 const { title = "My Site" } = Astro.props;
+import { ViewTransitions } from "astro:transitions";
 ---
 
 <!DOCTYPE html>
 <html lang="en">
 	<head>
+		<ViewTransitions />
+		<link rel="preload" href="/space.png" as="image" />
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
     	<title>{title}</title>
+		<link rel="icon" type="image/png" href="/favicon.png" />
     	<style>
     		:root {
 				--bg: #0f172a;
 				--fg: #e5e7eb;
 				--accent: #38bdf8;
+				--nav-h: 56px;
+				--nav-gap: 24px;
+				--page-top: calc(var(--nav-h) + var(--nav-gap));
 			}
 			* {
 				box-sizing: border-box;
@@ -21,59 +29,124 @@ const { title = "My Site" } = Astro.props;
 			}
 			body {
 				min-height: 100vh;
-				background: var(--bg);
+				background: black;
 				color: var(--fg);
 				font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+				overflow-x: hidden;
+			}
+			.space-bg {
+				position: fixed;
+				inset: 0;
+				z-index: -1;
+				background-image: url("/space.png");
+				background-repeat: repeat;
+				background-position: center 0;
+				/* background-size: 3840 2160; */
+				background-size: 1920px 1080px;
+				/* animation: space-tile-scroll 60s linear infinite; */
+			}
+			.space-bg-overlay {
+				position: fixed;
+				inset: 0;
+				z-index: -1;
+				pointer-events: none;
+				background: radial-gradient(circle at center, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.75) 70%);
+			}
+			@keyframes space-tile-scroll {
+				from { background-position: center 0px; }
+				to   { background-position: center 1080px; }
 			}
 			nav {
 				position: fixed;
-				top: 0;
-				left: 0;
-				width: 100%;
-				height: 64px;
+				top: 16px;
+				left: 50%;
+				transform: translateX(-50%);
+				height: 56px;
+				padding: 0 1.5rem;
 				display: flex;
+				align-items: center;
 				justify-content: center;
-				background: rgba(15, 23, 42, 0.95);
-				border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+				background: rgba(15, 23, 42, 0.35);
+				backdrop-filter: blur(10px);
+				-webkit-backdrop-filter: blur(10px);
+				border-radius: 999px;
+				border: 1px solid rgba(255, 255, 255, 0.15);
 				z-index: 1000;
 			}
 			.nav-inner {
-				width: 100%;
-				max-width: 900px;
 				display: flex;
-				justify-content: space-between;
+				gap: 2rem;
 				align-items: center;
-				padding: 0 2rem;
 			}
 			nav a {
 				color: var(--fg);
 				text-decoration: none;
 				font-weight: 500;
+				font-size: 0.95rem;
+				opacity: 0.9;
+				transition: opacity 0.2s ease, color 0.2s ease;
 			}
 			nav a:hover {
+				opacity: 1;
 				color: var(--accent);
 			}
 			main {
-				min-height: calc(100vh - 64px);
-				padding-top: 64px;
+				min-height: calc(100vh - var(--page-top));
+  				padding-top: var(--page-top);
 				display: flex;
 				flex-direction: column;
 				align-items: center;
 				justify-content: center;
 				text-align: center;
+				position: relative;
+				z-index: 1;
+			}
+			@media (max-width: 640px) {
+				nav {
+					top: 12px;
+					padding: 0 1rem;
+				}
+				.nav-inner {
+					gap: 1.25rem;
+				}
+				nav a {
+					font-size: 0.9rem;
+				}
 			}
 		</style>
 	</head>
 	<body>
+		<div class="space-bg" data-astro-transition-persist></div>
 		<nav>
 			<div class="nav-inner">
 				<a href="/"> About </a>
-				<a href="/projects"> Projects </a>
-				<a href="/work"> Work Experience </a>
+				<a href="/projects"> Personal Projects </a>
+				<a href="/experience"> Experience </a>
 			</div>
 		</nav>
 		<main>
 			<slot />
 		</main>
-  	</body>
+
+		<script is:inline>
+			// Prevent multiple animation loops across navigations
+			if (!window.__spaceRAFStarted) {
+				window.__spaceRAFStarted = true;
+				const TILE_H = 1080; // recall background-size: 1920px 1080px
+				const SPEED = 25;    // px per second
+				// Persist start time across navigations
+				window.__spaceStartTime = window.__spaceStartTime ?? performance.now();
+				function tick(now) {
+					const bg = document.querySelector(".space-bg");
+					if (bg) {
+						const elapsedSec = (now - window.__spaceStartTime) / 1000;
+						const y = (elapsedSec * SPEED) % TILE_H;
+						bg.style.backgroundPosition = `center ${y}px`;
+					}
+					requestAnimationFrame(tick);
+				}
+				requestAnimationFrame(tick);
+			}
+		</script>
+	</body>
 </html>

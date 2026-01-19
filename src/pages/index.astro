@@ -3,29 +3,236 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import headshot from "../assets/headshot.png";
 ---
 
-<BaseLayout title="Home">
-	<div class="headshot-wrapper">
-		<img src={headshot.src} class="headshot"/>
-	</div>
-	<h1>Joseph Skantz</h1>
-	<h4>M.S. in Computer Science, University of Wisconsin-Madison (May 2027)</h4>
-	<h4>Software Engineer Intern at <a href=Work>AbbVie</a></h4>
+<BaseLayout title="About">
+    <div class="layout">
+        <div class="identity-card">
+            <div class="headshot-wrapper">
+                <img src={headshot.src} class="headshot"/>
+            </div>
+            <h1 class="name">Joseph Skantz</h1>
+            <h3 class="education-h3">University of Wisconsin-Madison</h3>
+            <p class="education-p">B.S. Computer Science <span class="muted">(Sep. 2021 - Dec. 2025)</span></p>
+            <p class="education-p">M.S. Computer Science <span class="muted">(Jan. 2026 - May. 2027)</span></p>
+            <p class="education-sub">Focus: Applied Machine Learning, Deep Learning</p>
+            <div class="social-row" aria-label="social links">
+                <a class="icon-link" href="https://www.linkedin.com/in/josephskantz/" target="_blank" rel="noreferrer" aria-label="LinkedIn">
+                    <img src="/linkedin.svg" alt="" />
+                </a>
+                <a class="icon-link" href="https://github.com/joeskantz" target="_blank" rel="noreferrer" aria-label="GitHub">
+                    <img src="/github.svg" alt="" />
+                </a>
+            </div>
+        </div>
+        <div class="glass-container">
+            <div class="projects">
+                <h2>Featured Projects</h2>
+                <a class="project-card" href="/projects">
+                <div class="project-image">
+                    <img src="/confusion-matrix.png" alt="Project A thumbnail" loading="lazy" />
+                </div>
+                <div class="project-text">
+                    <h2>AI generated vs. human written text classification</h2>
+                    <p>Developed a custom neural network, achieving 90.81% accuracy on testing split from ~800k unique text samples.</p>
+                </div>
+                </a>
+                <a class="project-card" href="/projects">
+                <div class="project-image">
+                    <img src="/roc-curve.png" alt="Project B thumbnail" loading="lazy" />
+                </div>
+                <div class="project-text">
+                    <h2>ML Recommender System</h2>
+                    <p>More details coming soon...</p>
+                </div>
+                </a>
+            </div>
+        </div>
+    </div>
 
-	<style>
+    <style>
+        /* BaseLayout centers <main>. Override for this page */
+        :global(main) {
+            justify-content: flex-start;
+            align-items: stretch;
+            text-align: left;
+            width: 100%;
+            padding: var(--page-top) 24px 48px;
+        }
+        /* Two-column layout */
+        .layout {
+            width: min(1100px, 100%);
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 400px 1fr; /* left fixed, right fluid */
+            gap: 18px;
+            align-items: start;
+        }
+
+        /* Left side: identity card */
+        .identity-card {
+            position: sticky;
+            /* top: 96px; */
+            top: var(--page-top);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            border-radius: 30px;
+            background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(255,255,255,0.00) 55%);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            /* border: 1px solid rgba(255, 255, 255, 0.15); */
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+            z-index: 2;
+        }
 		.headshot-wrapper {
 			width: 160px;
-			height: 160px;
+            aspect-ratio: 1/1;
 			border-radius: 50%;
 			overflow: hidden;
 			border: 3px solid #ffffffff;
 		}
-
 		.headshot-wrapper img {
 			width: 100%;
 			height: 100%;
 			object-fit: cover;
-			object-position: center 45%;
-			transform: scale(1.3);
+			object-position: center 40%;
+			transform: scale(1.50);
 		}
+        .name {
+			margin: 0;
+			font-size: 1.6rem;
+			font-weight: 650;
+			letter-spacing: -0.02em;
+		}
+        .muted {
+            opacity: 0.78;
+        }
+        .education-sub {
+            margin: 1px 0 0;
+            font-size: 0.9rem;
+            line-height: 0.25;
+            color: rgba(229, 231, 235, 0.82);
+        }
+        .education-p {
+            margin: 0;
+            font-size: 0.95rem;
+            line-height: 1.25;
+        }
+        .education-h3 {
+            padding-top: 30px;
+            margin: 0;
+            font-size: 1.15rem;
+        }
+        .social-row {
+            margin-top: 50px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        .icon-link {
+            width: 40px;
+            height: 40px;
+            display: grid;
+            place-items: center;
+            border-radius: 12px;
+            color: rgba(229, 231, 235, 0.92);
+            background: rgba(0, 0, 0, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        }
+        .icon-link:hover {
+            transform: translateY(-1px);
+            background: rgba(56, 189, 248, 0.12);
+            /* border-color: rgba(56, 189, 248, 0.45); */
+            color: var(--accent);
+        }
+        .icon-link img {
+            width: 40px;
+            height: 40px;
+            display: block;
+        }
+
+        /* Right Side: projects container*/
+        .glass-container {
+			display: flex;
+			align-items: center;
+			gap: 1rem;
+			padding: 1rem 1.25rem;
+			border-radius: 30px;
+            background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(255,255,255,0.00) 55%);
+			backdrop-filter: blur(5px);
+			-webkit-backdrop-filter: blur(5px);
+			/* border: 1px solid rgba(255, 255, 255, 0.15); */
+			box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+			z-index: 2;
+		}
+        .projects {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
+            min-width: 0;
+        }
+        .project-card {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+            padding: 10px 12px;
+            border-radius: 18px;
+            text-decoration: none;
+            color: inherit;
+            background: rgba(0, 0, 0, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+        }
+        .project-card:hover {
+            transform: translateY(-1px);
+            border-color: rgba(56, 189, 248, 0.45);
+            background: rgba(56, 189, 248, 0.10);
+        }
+        .project-image {
+            width: 220px;
+            height: 144px;
+            border-radius: 12px;
+            overflow: hidden;
+            flex: 0 0 auto;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .project-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .project-text {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 4px;
+        }
+        .project-text h2 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 650;
+        }
+        .project-text p {
+            margin: 0;
+            font-size: 0.9rem;
+            opacity: 0.9;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        @media (max-width: 900px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+            .identity-card {
+                position: static;
+            }
+        }
 	</style>
 </BaseLayout>
