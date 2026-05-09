@@ -11,9 +11,9 @@ import headshot from "../assets/headshot.png";
             </div>
             <h1 class="name">Joseph Skantz</h1>
             <h3 class="education-h3">University of Wisconsin-Madison</h3>
-            <p class="education-p">B.S. Computer Science <span class="muted">(Sep. 2021 - Dec. 2025)</span></p>
-            <p class="education-p">M.S. Computer Science <span class="muted">(Jan. 2026 - May. 2027)</span></p>
+            <p class="education-p">M.S. Computer Science <span class="muted">(Jan. 2026 - May 2027)</span></p>
             <p class="education-sub">Focus: Applied Machine Learning, Deep Learning</p>
+            <p class="education-p">B.S. Computer Science <span class="muted">(Sep. 2021 - Dec. 2025)</span></p>
             <div class="social-row" aria-label="social links">
                 <a class="icon-link" href="https://www.linkedin.com/in/josephskantz/" target="_blank" rel="noreferrer" aria-label="LinkedIn">
                     <img src="/linkedin.svg" alt="" />
@@ -31,7 +31,7 @@ import headshot from "../assets/headshot.png";
                     <img src="/confusion-matrix.png" alt="Project A thumbnail" loading="lazy" />
                 </div>
                 <div class="project-text">
-                    <h2>AI generated vs. human written text classification</h2>
+                    <h3>AI generated vs. human written text classification</h3>
                     <p>Developed a custom neural network, achieving 90.81% accuracy on testing split from ~800k unique text samples.</p>
                 </div>
                 </a>
@@ -40,7 +40,7 @@ import headshot from "../assets/headshot.png";
                     <img src="/roc-curve.png" alt="Project B thumbnail" loading="lazy" />
                 </div>
                 <div class="project-text">
-                    <h2>ML Recommender System</h2>
+                    <h3>ML Recommender System</h3>
                     <p>More details coming soon...</p>
                 </div>
                 </a>
@@ -111,7 +111,7 @@ import headshot from "../assets/headshot.png";
         .education-sub {
             margin: 1px 0 0;
             font-size: 0.9rem;
-            line-height: 0.25;
+            line-height: 1.25;
             color: rgba(229, 231, 235, 0.82);
         }
         .education-p {
@@ -148,8 +148,8 @@ import headshot from "../assets/headshot.png";
             color: var(--accent);
         }
         .icon-link img {
-            width: 40px;
-            height: 40px;
+            width: 20px;
+            height: 20px;
             display: block;
         }
 
@@ -161,8 +161,8 @@ import headshot from "../assets/headshot.png";
 			padding: 1rem 1.25rem;
 			border-radius: 30px;
             background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(255,255,255,0.00) 55%);
-			backdrop-filter: blur(5px);
-			-webkit-backdrop-filter: blur(5px);
+			backdrop-filter: blur(2px);
+			-webkit-backdrop-filter: blur(2px);
 			/* border: 1px solid rgba(255, 255, 255, 0.15); */
 			box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
 			z-index: 2;
@@ -212,7 +212,7 @@ import headshot from "../assets/headshot.png";
             justify-content: center;
             gap: 4px;
         }
-        .project-text h2 {
+        .project-text h3 {
             margin: 0;
             font-size: 1rem;
             font-weight: 650;

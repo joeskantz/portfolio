@@ -2,6 +2,7 @@
 import "@fortawesome/fontawesome-free/css/all.min.css";
 const { title = "Joseph Skantz" } = Astro.props;
 import { ViewTransitions } from "astro:transitions";
+const pathname = Astro.url.pathname;
 ---
 
 <!DOCTYPE html>
@@ -12,6 +13,10 @@ import { ViewTransitions } from "astro:transitions";
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
     	<title>{title}</title>
+		<meta name="description" content="Joseph Skantz — CS graduate student at UW–Madison specializing in Applied Machine Learning and Deep Learning." />
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content="Joseph Skantz — CS graduate student at UW–Madison specializing in Applied Machine Learning and Deep Learning." />
+		<meta property="og:type" content="website" />
 		<link rel="icon" type="image/png" href="/favicon.png" />
     	<style>
     		:root {
@@ -90,6 +95,10 @@ import { ViewTransitions } from "astro:transitions";
 				opacity: 1;
 				color: var(--accent);
 			}
+			nav a[aria-current="page"] {
+				opacity: 1;
+				color: var(--accent);
+			}
 			main {
 				min-height: calc(100vh - var(--page-top));
   				padding-top: var(--page-top);
@@ -119,9 +128,9 @@ import { ViewTransitions } from "astro:transitions";
 		<div class="space-bg" data-astro-transition-persist></div>
 		<nav>
 			<div class="nav-inner">
-				<a href="/"> About </a>
-				<a href="/projects"> Personal Projects </a>
-				<a href="/experience"> Experience </a>
+				<a href="/" aria-current={pathname === "/" ? "page" : undefined}> About </a>
+				<a href="/projects" aria-current={pathname === "/projects" ? "page" : undefined}> Personal Projects </a>
+				<a href="/experience" aria-current={pathname === "/experience" ? "page" : undefined}> Experience </a>
 			</div>
 		</nav>
 		<main>
