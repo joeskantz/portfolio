@@ -7,20 +7,28 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         <h2 class="section-title">Personal Projects</h2>
 
         <div class="projects">
-            <a class="project-card" href="/projects/recommender">
+            <article class="project-card">
                 <div class="project-image">
                     <img src="/recommender-tail-latency.png" alt="HPC recommender — tail latency vs request rate" loading="lazy" />
                 </div>
                 <div class="project-text">
-                    <h3>HPC-Accelerated Music Recommender</h3>
+                    <h3>
+                        <a class="project-title-link" href="/projects/recommender">HPC-Accelerated Music Recommender</a>
+                    </h3>
                     <p class="meta">CUDA · cuBLAS · OpenBLAS · OpenMP · C++ · Python</p>
                     <p>
                         Matrix-factorization recommender for ~120K users and ~5.6M tracks from the Last.fm
                         LFM-1b dataset. Both training and inference are implemented as a CPU baseline and a
                         GPU-accelerated path, with end-to-end benchmarks on training wall-clock and tail latency.
                     </p>
+                    <div class="card-actions">
+                        <a class="repo-pill" href="https://github.com/joeskantz/recommender" target="_blank" rel="noreferrer">
+                            <i class="fa-brands fa-github" aria-hidden="true"></i>
+                            <span>View on GitHub</span>
+                        </a>
+                    </div>
                 </div>
-            </a>
+            </article>
 
             <div class="placeholder-card" aria-hidden="true">
                 <p>More projects coming soon...</p>
@@ -57,6 +65,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             gap: 14px;
         }
         .project-card {
+            position: relative;
             display: flex;
             gap: 16px;
             align-items: stretch;
@@ -76,6 +85,47 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             border-color: rgba(56, 189, 248, 0.45);
             background: rgba(56, 189, 248, 0.10);
             box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+        }
+        .project-title-link {
+            color: inherit;
+            text-decoration: none;
+        }
+        .project-title-link::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            z-index: 1;
+        }
+        .card-actions {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .repo-pill {
+            position: relative;
+            z-index: 2;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            padding: 6px 12px;
+            border-radius: 999px;
+            text-decoration: none;
+            color: rgba(229, 231, 235, 0.92);
+            background: rgba(0, 0, 0, 0.30);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+            white-space: nowrap;
+        }
+        .repo-pill:hover {
+            transform: translateY(-1px);
+            color: var(--accent);
+            border-color: rgba(56, 189, 248, 0.55);
+            background: rgba(56, 189, 248, 0.14);
         }
         .project-image {
             width: 280px;
@@ -101,6 +151,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         }
         .project-text h3 {
             margin: 0;
+            padding-right: 150px;
             font-size: 1.1rem;
             font-weight: 650;
             letter-spacing: -0.01em;
