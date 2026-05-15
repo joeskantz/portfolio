@@ -1,0 +1,364 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="HPC Recommender">
+
+    <div class="layout">
+        <a class="back-link" href="/projects">
+            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+            <span>All Personal Projects</span>
+        </a>
+
+        <article class="project-card hero">
+            <div class="card-top">
+                <div class="title-block">
+                    <h1 class="project-title">HPC-Accelerated Music Recommender</h1>
+                </div>
+                <a class="repo-pill" href="https://github.com/joeskantz/recommender" target="_blank" rel="noreferrer">
+                    <i class="fa-brands fa-github" aria-hidden="true"></i>
+                    <span>View on GitHub</span>
+                </a>
+            </div>
+            <p class="lede">
+                Matrix factorization (MF) recommender trained on the <strong>Last.fm LFM-1b</strong> dataset
+                (1+ billion listening events, ~120K users, ~5.6M tracks). Both training and inference
+                are implemented across CPU and GPU paths to measure performance gains on a real ML
+                workload, given the constraints of my local machine.
+                <br>
+                <br>
+                <i>Schedl, M. (2016). The LFM-1b Dataset for Music Retrieval and Recommendation. Proceedings of the ACM International Conference on Multimedia Retrieval (ICMR 2016), New York, USA, April 2016.</i>
+            </p>
+            <div class="tools-row">
+                <i class="fa-solid fa-wrench tools-icon" aria-hidden="true"></i>
+                <p class="tools-text">
+                    <span class="tools-label">Tools/Skills:</span>
+                    <span class="tools-list">C++17, CUDA, cuBLAS, OpenBLAS, OpenMP, Python, NumPy/SciPy, CMake, SLURM</span>
+                </p>
+            </div>
+        </article>
+
+        <article class="project-card">
+            <h2 class="section-h2">Overview</h2>
+            <p>
+                Given ~120K users and ~5.6M unique tracks, materializing the full user-track ratings matrix
+                is infeasible (~670 billion entries, of which only a small fraction carry signal). Matrix factorization
+                instead approximates this matrix as the product of two compact (low rank) embedding matrices,
+                <em>U</em> (users × <em>k</em>) and <em>S</em> (tracks × <em>k</em>), which explain observed
+                listening behavior, and can be used to generalize to unobserved behavior (inference time).
+            </p>
+            <p>
+                For training, Alternating Least Squares (ALS) is used on implicit feedback (play counts converted
+                to a binary preference and a logarithmic confidence weight). Both the user step and item
+                step are embarrassingly parallel, a natural fit for GPU batched solves, and the primary reason 
+                I chose a MF model for this project. Inference consists of a simple dot product and top-K sort, which
+                is implemented through a single large SGEMM plus a parallel top-K in the GPU accelerated path, 
+                exactly the dense linear algebra cuBLAS is built for.
+            </p>
+        </article>
+
+        <article class="project-card">
+            <h2 class="section-h2">Approach</h2>
+            <ul class="bullets">
+                <li>
+                    <strong>Low-rank factorization.</strong> Replace the sparse 120K × 5.6M ratings matrix
+                    with two dense embedding matrices <em>U</em> ∈ ℝ<sup>120K×64</sup> and <em>S</em> ∈ ℝ<sup>5.6M×64</sup>.
+                    The predicted preference for user <em>u</em> on track <em>i</em> is simply the dot product of the respective rows.
+                </li>
+                <li>
+                    <strong>ALS with implicit feedback.</strong> Each ALS sub-problem has a closed-form solution:
+                    <em>U<sub>u</sub></em> = (S<sup>T</sup>C<sup>u</sup>S + λI)<sup>−1</sup>S<sup>T</sup>C<sup>u</sup>p<sup>u</sup>.
+                    Loss decreases monotonically and convergence is guaranteed.
+                </li>
+                <li>
+                    <strong>The computational trick.</strong> S<sup>T</sup>C<sup>u</sup>S decomposes into
+                    a constant term S<sup>T</sup>S (computed once per iteration) plus a sparse correction
+                    over only the tracks user <em>u</em> actually listened to - reducing each user update
+                    from O(n) to O(n<sub>u</sub>), where n<sub>u</sub> is typically 50–500 instead of all
+                    n = 5.6M tracks.
+                </li>
+                <li>
+                    <strong>Batched GPU solves.</strong> The per-user k×k linear systems are batched
+                    into <code>cublasSgetrfBatched</code> + <code>cublasSgetrsBatched</code> calls
+                    (chunked across users to stay within GPU memory), saturating the GPU's arithmetic units.
+                </li>
+                <li>
+                    <strong>Inference at scale.</strong> A batch of 1000 concurrent requests becomes one
+                    cuBLAS SGEMM of shape (1000 × 64) · (64 × 5.6M) - about 720 billion floating-point operations -
+                    completed in milliseconds, followed by a parallel top-K argpartition kernel. A Python
+                    script is used to simulate request/response model, rather than a full backend implementation.
+
+                </li>
+            </ul>
+        </article>
+
+        <article class="project-card">
+            <h2 class="section-h2">Pipeline</h2>
+            <ol class="bullets ordered">
+                <li><strong>Preprocessing (Python).</strong> Chunk-reads 1B+ listening events, filters low-signal users/tracks, re-indexes to dense IDs, splits per-user train/val, writes <code>.npz</code> arrays.</li>
+                <li><strong>CPU training baseline (NumPy/SciPy).</strong> Single-threaded ALS reference - establishes correctness and a wall-clock baseline.</li>
+                <li><strong>GPU training (CUDA + cuBLAS).</strong> Batched LU factorization and solve on the GPU for both the user step and the item step. Binary embedding matrices written for inference.</li>
+                <li><strong>CPU inference baseline (C++ + OpenBLAS + OpenMP).</strong> Parameterizable threading - serves as the non-HPC and HPC-CPU reference for the latency comparison.</li>
+                <li><strong>GPU inference (CUDA + cuBLAS).</strong> Embeddings loaded once into GPU memory, concurrent requests served via SGEMM + parallel top-K kernel.</li>
+            </ol>
+        </article>
+
+        <article class="project-card">
+            <h2 class="section-h2">Results</h2>
+            <p class="results-blurb">
+                The CPU baseline (single-threaded NumPy/SciPy or OpenBLAS+OpenMP) and the GPU build
+                (CUDA + cuBLAS) are run on the same preprocessed data and benchmarked end-to-end -
+                training wall-clock, request latency under load, and tail-latency scaling.
+            </p>
+            <div class="charts-grid">
+                <figure class="chart">
+                    <img src="/recommender-training-time.png" alt="Training time comparison: GPU vs CPU baseline" loading="lazy" />
+                    <figcaption>End-to-end ALS training wall-clock - GPU vs CPU baselines.</figcaption>
+                </figure>
+                <figure class="chart">
+                    <img src="/recommender-tail-latency.png" alt="Tail latency vs request rate" loading="lazy" />
+                    <figcaption>p95 inference latency as concurrent request rate ramps up.</figcaption>
+                </figure>
+                <figure class="chart">
+                    <img src="/recommender-latency-distribution.png" alt="Per-request latency distribution across configurations" loading="lazy" />
+                    <figcaption>Per-request latency distribution across CPU single-threaded, CPU multi-threaded, and GPU.</figcaption>
+                </figure>
+            </div>
+        </article>
+    </div>
+
+    <style>
+        :global(main) {
+            justify-content: flex-start;
+            align-items: stretch;
+            text-align: left;
+            width: 100%;
+            padding: var(--page-top) 24px 48px;
+        }
+        .layout {
+            width: min(1100px, 100%);
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding-top: 24px;
+            padding-bottom: 48px;
+        }
+        .back-link {
+            align-self: flex-start;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: rgba(229, 231, 235, 0.78);
+            font-size: 0.9rem;
+            padding: 6px 10px;
+            border-radius: 999px;
+            transition: color 0.15s ease, background 0.15s ease;
+        }
+        .back-link:hover {
+            color: var(--accent);
+            background: rgba(56, 189, 248, 0.08);
+        }
+        .project-card {
+            text-align: left;
+            padding: 22px 24px;
+            border-radius: 24px;
+            background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(255,255,255,0.00) 55%);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .project-card.hero {
+            padding-bottom: 18px;
+        }
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+            margin-bottom: 10px;
+            min-width: 0;
+        }
+        .title-block {
+            min-width: 0;
+        }
+        .project-title {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: rgba(229, 231, 235, 0.98);
+        }
+        .project-subtitle {
+            margin: 6px 0 0;
+            font-size: 0.92rem;
+            color: rgba(229, 231, 235, 0.78);
+        }
+        .course {
+            color: rgba(229, 231, 235, 0.85);
+        }
+        .sep {
+            margin: 0 0.4rem;
+            opacity: 0.55;
+        }
+        .repo-pill {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.88rem;
+            padding: 7px 12px;
+            border-radius: 999px;
+            text-decoration: none;
+            color: rgba(229, 231, 235, 0.92);
+            background: rgba(0, 0, 0, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+            white-space: nowrap;
+        }
+        .repo-pill:hover {
+            transform: translateY(-1px);
+            color: var(--accent);
+            border-color: rgba(56, 189, 248, 0.45);
+            background: rgba(56, 189, 248, 0.10);
+        }
+        .lede {
+            margin: 4px 0 14px;
+            font-size: 1rem;
+            line-height: 1.55;
+            color: rgba(229, 231, 235, 0.92);
+        }
+        .lede strong {
+            color: rgba(229, 231, 235, 0.98);
+            font-weight: 650;
+        }
+        .section-h2 {
+            margin: 0 0 10px;
+            font-size: 1.15rem;
+            font-weight: 650;
+            letter-spacing: -0.01em;
+            color: rgba(229, 231, 235, 0.96);
+        }
+        .project-card p {
+            margin: 6px 0 0;
+            font-size: 0.95rem;
+            line-height: 1.55;
+            color: rgba(229, 231, 235, 0.86);
+        }
+        .project-card p + p {
+            margin-top: 10px;
+        }
+        .bullets {
+            margin: 8px 0 0;
+            padding-left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: rgba(229, 231, 235, 0.86);
+        }
+        .bullets li {
+            overflow-wrap: anywhere;
+        }
+        .bullets li::marker {
+            color: rgba(229, 231, 235, 0.55);
+        }
+        .bullets strong {
+            color: rgba(229, 231, 235, 0.96);
+            font-weight: 650;
+        }
+        code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.88em;
+            padding: 1px 6px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.30);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            color: rgba(229, 231, 235, 0.92);
+        }
+        em {
+            color: rgba(229, 231, 235, 0.92);
+        }
+        .results-blurb {
+            margin-bottom: 14px;
+        }
+        .charts-grid {
+            margin-top: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .chart {
+            margin: 0;
+            padding: 12px;
+            border-radius: 16px;
+            background: rgba(0, 0, 0, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .chart img {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+            display: block;
+            margin: 0;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.96);
+        }
+        .chart figcaption {
+            font-size: 0.85rem;
+            line-height: 1.4;
+            color: rgba(229, 231, 235, 0.75);
+        }
+        .footnote {
+            margin-top: 14px;
+            font-size: 0.88rem;
+            color: rgba(229, 231, 235, 0.72);
+        }
+        .tools-text {
+            margin: 0;
+            font-size: 0.9rem;
+            line-height: 1.35;
+            color: rgba(229, 231, 235, 0.82);
+            min-width: 0;
+        }
+        .tools-row {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+        .tools-label {
+            font-weight: 650;
+            color: rgba(229, 231, 235, 0.90);
+        }
+        .tools-list {
+            color: rgba(229, 231, 235, 0.78);
+        }
+        .tools-icon {
+            width: 16px;
+            height: 16px;
+            opacity: 0.85;
+            flex: 0 0 auto;
+            filter: drop-shadow(0 6px 14px rgba(0,0,0,0.35));
+        }
+        @media (max-width: 700px) {
+            .card-top {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .project-title {
+                font-size: 1.3rem;
+            }
+        }
+    </style>
+
+</BaseLayout>

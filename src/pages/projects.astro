@@ -2,8 +2,140 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
-<BaseLayout title="Joseph Skantz">
-    <div>
-        <h3>More coming soon...</h3>
+<BaseLayout title="Joseph Skantz — Personal Projects">
+    <div class="layout">
+        <h2 class="section-title">Personal Projects</h2>
+
+        <div class="projects">
+            <a class="project-card" href="/projects/recommender">
+                <div class="project-image">
+                    <img src="/recommender-tail-latency.png" alt="HPC recommender — tail latency vs request rate" loading="lazy" />
+                </div>
+                <div class="project-text">
+                    <h3>HPC-Accelerated Music Recommender</h3>
+                    <p class="meta">CUDA · cuBLAS · OpenBLAS · OpenMP · C++ · Python</p>
+                    <p>
+                        Matrix-factorization recommender for ~120K users and ~5.6M tracks from the Last.fm
+                        LFM-1b dataset. Both training and inference are implemented as a CPU baseline and a
+                        GPU-accelerated path, with end-to-end benchmarks on training wall-clock and tail latency.
+                    </p>
+                </div>
+            </a>
+
+            <div class="placeholder-card" aria-hidden="true">
+                <p>More projects coming soon...</p>
+            </div>
+        </div>
     </div>
+
+    <style>
+        :global(main) {
+            justify-content: flex-start;
+            align-items: stretch;
+            text-align: left;
+            width: 100%;
+            padding: var(--page-top) 24px 48px;
+        }
+        .layout {
+            width: min(1100px, 100%);
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding-top: 24px;
+            padding-bottom: 48px;
+        }
+        .section-title {
+            margin: 0;
+            font-size: 1.35rem;
+            font-weight: 650;
+            letter-spacing: -0.02em;
+        }
+        .projects {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .project-card {
+            display: flex;
+            gap: 16px;
+            align-items: stretch;
+            padding: 16px;
+            border-radius: 24px;
+            text-decoration: none;
+            color: inherit;
+            background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(255,255,255,0.00) 55%);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+            transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+        }
+        .project-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(56, 189, 248, 0.45);
+            background: rgba(56, 189, 248, 0.10);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+        }
+        .project-image {
+            width: 280px;
+            min-height: 170px;
+            border-radius: 14px;
+            overflow: hidden;
+            flex: 0 0 auto;
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            background: rgba(255, 255, 255, 0.96);
+        }
+        .project-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .project-text {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 6px;
+        }
+        .project-text h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 650;
+            letter-spacing: -0.01em;
+        }
+        .project-text p {
+            margin: 0;
+            font-size: 0.93rem;
+            line-height: 1.5;
+            color: rgba(229, 231, 235, 0.86);
+        }
+        .project-text p.meta {
+            font-size: 0.82rem;
+            color: rgba(229, 231, 235, 0.70);
+            letter-spacing: 0.01em;
+        }
+        .placeholder-card {
+            padding: 18px 20px;
+            border-radius: 24px;
+            border: 1px dashed rgba(255, 255, 255, 0.18);
+            background: rgba(0, 0, 0, 0.18);
+            color: rgba(229, 231, 235, 0.65);
+            text-align: center;
+        }
+        .placeholder-card p {
+            margin: 0;
+            font-size: 0.95rem;
+        }
+        @media (max-width: 700px) {
+            .project-card {
+                flex-direction: column;
+            }
+            .project-image {
+                width: 100%;
+                min-height: 200px;
+            }
+        }
+    </style>
 </BaseLayout>
