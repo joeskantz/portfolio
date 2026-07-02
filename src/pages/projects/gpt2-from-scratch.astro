@@ -1,0 +1,270 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Joseph Skantz">
+
+    <div class="layout">
+        <a class="back-link" href="/projects">
+            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+            <span>All Personal Projects</span>
+        </a>
+
+        <article class="project-card hero">
+            <div class="card-top">
+                <div class="title-block">
+                    <h1 class="project-title">GPT-2 From Scratch (124M)</h1>
+                </div>
+                <a class="repo-pill" href="https://github.com/joeskantz/gpt2-from-scratch" target="_blank" rel="noreferrer">
+                    <i class="fa-brands fa-github" aria-hidden="true"></i>
+                    <span>View on GitHub</span>
+                </a>
+            </div>
+            <p class="lede">
+                A minimal, from-scratch PyTorch implementation of GPT-2 (124M parameters). Every
+                component, including causal self-attention, multi-head projections, the position-wise
+                MLP, pre-norm transformer blocks, learned positional embeddings, and the
+                weight-tied LM head, is implemented by hand, without <code>nn.Transformer</code>
+                or <code>F.scaled_dot_product_attention</code>.
+            </p>
+            <div class="tools-row">
+                <i class="fa-solid fa-wrench tools-icon" aria-hidden="true"></i>
+                <p class="tools-text">
+                    <span class="tools-label">Tools/Skills:</span>
+                    <span class="tools-list">PyTorch, Python, HuggingFace Transformers</span>
+                </p>
+            </div>
+        </article>
+
+        <article class="project-card">
+            <h2 class="section-h2">Overview</h2>
+            <p>
+                Reimplements GPT-2's architecture directly: attention, MLP, transformer
+                blocks, and the full model, instead of assembling it from PyTorch's
+                built-in <code>nn.Transformer</code> or fused attention kernels. The implementation
+                loads OpenAI's original 124M-parameter GPT-2 weights from HuggingFace and reproduces
+                its outputs exactly, which serves as the correctness check for every hand-written
+                component.
+            </p>
+        </article>
+
+        <article class="project-card">
+            <h2 class="section-h2">Implementation</h2>
+            <ul class="bullets">
+                <li>
+                    <strong>CausalSelfAttention.</strong> Fused Q/K/V projection, multi-head
+                    reshape, causal masking, scaled dot-product attention, and the output
+                    projection.
+                </li>
+                <li>
+                    <strong>MLP.</strong> The position-wise feedforward block, using GELU with
+                    the tanh approximation to match GPT-2's original formulation.
+                </li>
+                <li>
+                    <strong>Block.</strong> One attention sublayer and one MLP sublayer, each with
+                    pre-norm LayerNorm and a residual connection.
+                </li>
+                <li>
+                    <strong>GPT.</strong> Token and learned positional embeddings, a stack of
+                    transformer blocks, a final LayerNorm, and a weight-tied LM head.
+                </li>
+                <li>
+                    <strong>from_pretrained.</strong> Loads real GPT-2 weights from HuggingFace,
+                    handling the Conv1D-to-Linear weight transpose the original checkpoint format
+                    requires.
+                </li>
+                <li>
+                    <strong>generate.</strong> Autoregressive next-token generation with
+                    temperature and top-k sampling.
+                </li>
+            </ul>
+        </article>
+
+        <article class="project-card">
+            <h2 class="section-h2">Verification</h2>
+            <p>
+                Checked against HuggingFace's reference GPT-2 implementation: logits match within
+                <code>1e-3</code> on random input, and greedy generation produces token-for-token
+                identical output. Each component also has a test for a structural property beyond
+                output shape (causal masking for attention, position-wise independence for
+                the MLP, gradient flow through a block, and weight-tying/loss sanity for the full
+                model).
+            </p>
+        </article>
+    </div>
+
+    <style>
+        :global(main) {
+            justify-content: flex-start;
+            align-items: stretch;
+            text-align: left;
+            width: 100%;
+            padding: var(--page-top) 24px 48px;
+        }
+        .layout {
+            width: min(1100px, 100%);
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding-top: 24px;
+            padding-bottom: 48px;
+        }
+        .back-link {
+            align-self: flex-start;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: rgba(229, 231, 235, 0.78);
+            font-size: 0.9rem;
+            padding: 6px 10px;
+            border-radius: 999px;
+            transition: color 0.15s ease, background 0.15s ease;
+        }
+        .back-link:hover {
+            color: var(--accent);
+            background: rgba(56, 189, 248, 0.08);
+        }
+        .project-card {
+            text-align: left;
+            padding: 22px 24px;
+            border-radius: 24px;
+            background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(255,255,255,0.00) 55%);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .project-card.hero {
+            padding-bottom: 18px;
+        }
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+            margin-bottom: 10px;
+            min-width: 0;
+        }
+        .title-block {
+            min-width: 0;
+        }
+        .project-title {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: rgba(229, 231, 235, 0.98);
+        }
+        .repo-pill {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.88rem;
+            padding: 7px 12px;
+            border-radius: 999px;
+            text-decoration: none;
+            color: rgba(229, 231, 235, 0.92);
+            background: rgba(0, 0, 0, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+            white-space: nowrap;
+        }
+        .repo-pill:hover {
+            transform: translateY(-1px);
+            color: var(--accent);
+            border-color: rgba(56, 189, 248, 0.45);
+            background: rgba(56, 189, 248, 0.10);
+        }
+        .lede {
+            margin: 4px 0 14px;
+            font-size: 1rem;
+            line-height: 1.55;
+            color: rgba(229, 231, 235, 0.92);
+        }
+        .section-h2 {
+            margin: 0 0 10px;
+            font-size: 1.15rem;
+            font-weight: 650;
+            letter-spacing: -0.01em;
+            color: rgba(229, 231, 235, 0.96);
+        }
+        .project-card p {
+            margin: 6px 0 0;
+            font-size: 0.95rem;
+            line-height: 1.55;
+            color: rgba(229, 231, 235, 0.86);
+        }
+        .bullets {
+            margin: 8px 0 0;
+            padding-left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: rgba(229, 231, 235, 0.86);
+        }
+        .bullets li {
+            overflow-wrap: anywhere;
+        }
+        .bullets li::marker {
+            color: rgba(229, 231, 235, 0.55);
+        }
+        .bullets strong {
+            color: rgba(229, 231, 235, 0.96);
+            font-weight: 650;
+        }
+        code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.88em;
+            padding: 1px 6px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.30);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            color: rgba(229, 231, 235, 0.92);
+        }
+        .tools-text {
+            margin: 0;
+            font-size: 0.9rem;
+            line-height: 1.35;
+            color: rgba(229, 231, 235, 0.82);
+            min-width: 0;
+        }
+        .tools-row {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+        .tools-label {
+            font-weight: 650;
+            color: rgba(229, 231, 235, 0.90);
+        }
+        .tools-list {
+            color: rgba(229, 231, 235, 0.78);
+        }
+        .tools-icon {
+            width: 16px;
+            height: 16px;
+            opacity: 0.85;
+            flex: 0 0 auto;
+            filter: drop-shadow(0 6px 14px rgba(0,0,0,0.35));
+        }
+        @media (max-width: 700px) {
+            .card-top {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .project-title {
+                font-size: 1.3rem;
+            }
+        }
+    </style>
+
+</BaseLayout>

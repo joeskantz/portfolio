@@ -30,6 +30,30 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                 </div>
             </article>
 
+            <article class="project-card">
+                <div class="project-image">
+                    <img src="/gpt2-from-scratch.png" alt="GPT-2 from scratch" loading="lazy" />
+                </div>
+                <div class="project-text">
+                    <h3>
+                        <a class="project-title-link" href="/projects/gpt2-from-scratch">GPT-2 From Scratch (124M)</a>
+                    </h3>
+                    <p class="meta">PyTorch · Python · HuggingFace Transformers</p>
+                    <p>
+                        From-scratch PyTorch implementation of GPT-2 (124M), including causal self-attention,
+                        transformer blocks, and autoregressive generation, without
+                        nn.Transformer or fused attention kernels. Verified against HuggingFace's
+                        reference to logit- and token-level parity.
+                    </p>
+                    <div class="card-actions">
+                        <a class="repo-pill" href="https://github.com/joeskantz/gpt2-from-scratch" target="_blank" rel="noreferrer">
+                            <i class="fa-brands fa-github" aria-hidden="true"></i>
+                            <span>View on GitHub</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
             <div class="placeholder-card" aria-hidden="true">
                 <p>More projects coming soon...</p>
             </div>
