@@ -100,14 +100,17 @@ const pathname = Astro.url.pathname;
 				opacity: 1;
 				color: var(--accent);
 			}
+			/* Pages lay out their own content: top-aligned, full width, left-aligned text.
+			   (Lives here because scoped layout styles outrank a page's :global(main).) */
 			main {
-				min-height: calc(100vh - var(--page-top));
-  				padding-top: var(--page-top);
+				min-height: 100vh;
+				width: 100%;
+				padding: var(--page-top) 24px 48px;
 				display: flex;
 				flex-direction: column;
-				align-items: center;
-				justify-content: center;
-				text-align: center;
+				align-items: stretch;
+				justify-content: flex-start;
+				text-align: left;
 				position: relative;
 				z-index: 1;
 			}
