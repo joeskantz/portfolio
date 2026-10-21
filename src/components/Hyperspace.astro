@@ -1,0 +1,151 @@
+---
+// Hyperspace jump on page navigation: stars streak outward from the center while
+// the next page loads, then decelerate and fade once it's in place.
+---
+
+<canvas class="hyperspace" aria-hidden="true" transition:persist="hyperspace"></canvas>
+
+<style>
+	.hyperspace {
+		position: fixed;
+		inset: 0;
+		width: 100vw;
+		height: 100vh;
+		z-index: -1;
+		pointer-events: none;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.hyperspace {
+			display: none;
+		}
+	}
+</style>
+
+<script is:inline>
+	// Persisted across view transitions, so only wire up once
+	if (!window.__hyperspaceStarted && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+		window.__hyperspaceStarted = true;
+
+		const STAR_COUNT = 90;
+		const MAX_SPEED = 1.2;     // depth units per second at full warp
+		const ATTACK = 0.35;       // seconds to reach full warp
+		const RELEASE = 0.9;       // seconds to come back out of warp
+		const MIN_HOLD = 0.35;     // keep warping at least this long, even on instant loads
+		const FAILSAFE = 2500;     // ms; drop out of warp if the page never reports loaded
+		const STREAK = 0.05;       // streak length, in seconds of travel
+		const MAX_ALPHA = 0.45;    // brightest a streak gets
+		const MAX_WIDTH = 1.1;     // thickest a streak gets, px
+		const ACCENT_SHARE = 0.1;  // fraction of streaks drawn in the accent color
+		const ACCENT = "56, 189, 248";
+
+		const canvas = document.querySelector(".hyperspace");
+		const ctx = canvas.getContext("2d");
+		let width = 0;
+		let height = 0;
+		let focal = 0;
+
+		let intensity = 0;        // 0 = at rest, 1 = full warp
+		let warping = false;
+		let warpStartedAt = 0;
+		let releaseAt = Infinity;
+		let failsafeTimer = 0;
+		let running = false;
+		let lastFrame = 0;
+
+		const spawn = (star, z) => {
+			// Avoid the dead center, where stars would sit as a static dot
+			do {
+				star.x = Math.random() * 2 - 1;
+				star.y = Math.random() * 2 - 1;
+			} while (Math.hypot(star.x, star.y) < 0.08);
+			star.z = z;
+		};
+		const stars = Array.from({ length: STAR_COUNT }, () => {
+			const star = { accent: Math.random() < ACCENT_SHARE };
+			spawn(star, 0.1 + Math.random() * 0.9);
+			return star;
+		});
+
+		const resize = () => {
+			const dpr = window.devicePixelRatio || 1;
+			width = window.innerWidth;
+			height = window.innerHeight;
+			focal = Math.max(width, height) * 0.3;
+			canvas.width = Math.round(width * dpr);
+			canvas.height = Math.round(height * dpr);
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+		};
+		window.addEventListener("resize", resize);
+		resize();
+
+		const smoothstep = (t) => t * t * (3 - 2 * t);
+
+		const frame = (now) => {
+			const dt = Math.min(0.05, (now - lastFrame) / 1000);
+			lastFrame = now;
+
+			if (now >= releaseAt) warping = false;
+			intensity = warping ? Math.min(1, intensity + dt / ATTACK) : Math.max(0, intensity - dt / RELEASE);
+
+			ctx.clearRect(0, 0, width, height);
+			if (intensity === 0 && !warping) {
+				running = false;
+				return;
+			}
+
+			const e = smoothstep(intensity);
+			const speed = e * MAX_SPEED;
+			const cx = width / 2;
+			const cy = height / 2;
+			ctx.lineCap = "round";
+
+			for (const s of stars) {
+				s.z -= speed * dt;
+				if (s.z <= 0.02) spawn(s, 1);
+
+				const headX = cx + (s.x / s.z) * focal;
+				const headY = cy + (s.y / s.z) * focal;
+				const tailZ = Math.min(1.2, s.z + speed * STREAK);
+				const tailX = cx + (s.x / tailZ) * focal;
+				const tailY = cy + (s.y / tailZ) * focal;
+
+				// Closer stars are brighter and thicker
+				const nearness = 1 - Math.min(1, s.z);
+				const alpha = e * MAX_ALPHA * (0.1 + 0.9 * nearness);
+				ctx.strokeStyle = s.accent ? `rgba(${ACCENT}, ${alpha})` : `rgba(235, 240, 255, ${alpha})`;
+				ctx.lineWidth = 0.5 + nearness * (MAX_WIDTH - 0.5);
+				ctx.beginPath();
+				ctx.moveTo(tailX, tailY);
+				ctx.lineTo(headX, headY);
+				ctx.stroke();
+			}
+			requestAnimationFrame(frame);
+		};
+
+		const ensureRunning = () => {
+			if (running) return;
+			running = true;
+			lastFrame = performance.now();
+			requestAnimationFrame(frame);
+		};
+
+		const startWarp = () => {
+			warping = true;
+			warpStartedAt = performance.now();
+			releaseAt = Infinity;
+			clearTimeout(failsafeTimer);
+			failsafeTimer = setTimeout(endWarp, FAILSAFE);
+			ensureRunning();
+		};
+
+		function endWarp() {
+			clearTimeout(failsafeTimer);
+			releaseAt = Math.max(performance.now(), warpStartedAt + MIN_HOLD * 1000);
+		}
+
+		document.addEventListener("astro:before-preparation", startWarp);
+		document.addEventListener("astro:page-load", () => {
+			if (warping) endWarp();
+		});
+	}
+</script>

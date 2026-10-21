@@ -2,6 +2,7 @@
 import "@fortawesome/fontawesome-free/css/all.min.css";
 const { title = "Joseph Skantz" } = Astro.props;
 import { ViewTransitions } from "astro:transitions";
+import Hyperspace from "../components/Hyperspace.astro";
 const pathname = Astro.url.pathname;
 ---
 
@@ -126,6 +127,7 @@ const pathname = Astro.url.pathname;
 	</head>
 	<body>
 		<div class="space-bg" data-astro-transition-persist></div>
+		<Hyperspace />
 		<nav>
 			<div class="nav-inner">
 				<a href="/" aria-current={pathname === "/" ? "page" : undefined}> About </a>
