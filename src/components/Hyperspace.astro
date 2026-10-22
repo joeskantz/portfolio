@@ -1,6 +1,7 @@
 ---
 // Hyperspace jump on page navigation: stars streak outward from the center while
-// the next page loads, then decelerate and fade once it's in place.
+// the next page loads, then decelerate and fade once it's in place. Also plays as an
+// intro whenever any page is loaded directly (first visit or refresh).
 ---
 
 <canvas class="hyperspace" aria-hidden="true" transition:persist="hyperspace"></canvas>
@@ -37,6 +38,7 @@
 		const MAX_WIDTH = 1.1;     // thickest a streak gets, px
 		const ACCENT_SHARE = 0.1;  // fraction of streaks drawn in the accent color
 		const ACCENT = "56, 189, 248";
+		const INTRO_HOLD = 0.8;    // seconds at full warp for the page-load intro
 
 		const canvas = document.querySelector(".hyperspace");
 		const ctx = canvas.getContext("2d");
@@ -144,8 +146,18 @@
 		}
 
 		document.addEventListener("astro:before-preparation", startWarp);
+		// Also fires on the initial load; only end a navigation warp that's waiting on
+		// a page (the intro below has its own fixed end time)
 		document.addEventListener("astro:page-load", () => {
-			if (warping) endWarp();
+			if (warping && releaseAt === Infinity) endWarp();
 		});
+
+		// Intro: warp on every full page load (first visit or refresh, any page).
+		// In-site navigation doesn't rerun this; it gets the normal nav warp.
+		startWarp();
+		// Fixed-length intro instead of waiting on a page load; a navigation
+		// started meanwhile calls startWarp again, which takes over
+		clearTimeout(failsafeTimer);
+		releaseAt = warpStartedAt + (ATTACK + INTRO_HOLD) * 1000;
 	}
 </script>

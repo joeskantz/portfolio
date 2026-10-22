@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import headshot from "../assets/headshot.png";
+import CoffeeCupGrid from "../components/CoffeeCupGrid.astro";
 
 // Coursework card, one column per semester. An empty courses list shows "TBD".
 const semesters = [
@@ -73,7 +74,7 @@ const semesters = [
 
                 <a class="project-card" href="/projects">
                 <div class="project-image">
-                    <img src="/steaming_coffee_cup_logo_padded.svg" alt="Cup of Joe" loading="lazy" />
+                    <CoffeeCupGrid />
                 </div>
                 <div class="project-text">
                     <h3>More coming soon...</h3>

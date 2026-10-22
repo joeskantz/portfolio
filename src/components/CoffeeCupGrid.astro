@@ -1,0 +1,239 @@
+---
+// Pixel-art coffee cup for the "More coming soon" card, ported from
+// sandbox/pixel-grid.html. The cup's pixels are pushed away by the cursor and slowly
+// spring back (repel & heal), while cursor movement sends ripples across the grid
+// behind it; the ripples also jostle the cup. Static for reduced-motion visitors.
+---
+
+<canvas class="coffee-grid" aria-hidden="true"></canvas>
+
+<style>
+	.coffee-grid {
+		display: block;
+		width: 100%;
+		height: 100%;
+		background: #0f172a;
+	}
+</style>
+
+<script>
+	const CELL = 2;             // px per grid cell
+	const GAP = 1;              // px between cells
+	const COLOR = "#38bdf8";    // site accent
+	const BASE_ALPHA = 0.07;    // opacity of an unlit cell
+	const RIPPLE_MAX_ALPHA = 0.6; // keep ripples dimmer than the cup
+	const HEAL = 0.015;         // spring strength pulling cup pixels home (lower = slower heal)
+	const FRICTION = 0.82;
+	const REPEL_RADIUS = 10;    // px; ~30% of the cup's width, same proportion as the sandbox
+	const REPEL_FORCE = 2.5;
+	const RIPPLE_DAMPING = 0.965;
+	const RIPPLE_STRENGTH = 0.5; // energy added per step of cursor movement
+	const RIPPLE_PUSH = 1.2;    // how hard the waves shove the cup's pixels
+
+	// One character per pixel: "+" highlight, "#" body, "o" shadowed edge,
+	// "h" handle, "-" saucer, "~" steam
+	const CUP_ART = [
+		"    ~   ~   ~      ",
+		"     ~   ~   ~     ",
+		"    ~   ~   ~      ",
+		"     ~   ~   ~     ",
+		"                   ",
+		"   ++#########o    ",
+		"   ++#########ohhh ",
+		"   ++#########o  h ",
+		"   ++#########o  h ",
+		"   ++#########ohhh ",
+		"    +########o     ",
+		"     #######o      ",
+		" ----------------- ",
+		"   -------------   ",
+	];
+	const CUP_SHADES: Record<string, number> = { "+": 1, "#": 0.8, "o": 0.5, "h": 0.65, "-": 0.6, "~": 0.35 };
+
+	type Particle = { hx: number; hy: number; x: number; y: number; vx: number; vy: number; v: number };
+
+	function mount(canvas: HTMLCanvasElement) {
+		canvas.dataset.ready = "true";
+		const ctx = canvas.getContext("2d")!;
+		const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+		let w = 0;
+		let h = 0;
+		let cols = 0;
+		let rows = 0;
+		// Ripple wave field, double-buffered with the previous step
+		let val = new Float32Array(0);
+		let prev = new Float32Array(0);
+		let next = new Float32Array(0);
+		let particles: Particle[] = [];
+		const pointer = { x: 0, y: 0, inside: false, lastX: null as number | null, lastY: null as number | null };
+		let running = false;
+
+		const resize = () => {
+			const dpr = window.devicePixelRatio || 1;
+			const rect = canvas.getBoundingClientRect();
+			w = rect.width;
+			h = rect.height;
+			canvas.width = Math.round(w * dpr);
+			canvas.height = Math.round(h * dpr);
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+			cols = Math.ceil(w / CELL);
+			rows = Math.ceil(h / CELL);
+			val = new Float32Array(cols * rows);
+			prev = new Float32Array(cols * rows);
+			next = new Float32Array(cols * rows);
+
+			// Largest whole-number scale that fits keeps the art crisp
+			const artW = Math.max(...CUP_ART.map((line) => line.length));
+			const artH = CUP_ART.length;
+			const scale = Math.max(1, Math.floor(Math.min((cols * 0.9) / artW, (rows * 0.9) / artH)));
+			const ox = Math.floor((cols - artW * scale) / 2);
+			const oy = Math.floor((rows - artH * scale) / 2);
+			particles = [];
+			for (let y = 0; y < artH; y++) {
+				for (let x = 0; x < artW; x++) {
+					const v = CUP_SHADES[CUP_ART[y][x]] ?? 0;
+					if (!v) continue;
+					for (let sy = 0; sy < scale; sy++) {
+						for (let sx = 0; sx < scale; sx++) {
+							const hx = (ox + x * scale + sx) * CELL;
+							const hy = (oy + y * scale + sy) * CELL;
+							particles.push({ hx, hy, x: hx, y: hy, vx: 0, vy: 0, v });
+						}
+					}
+				}
+			}
+			draw();
+		};
+
+		// Push energy into the wave field at one cell
+		const disturb = (x: number, y: number) => {
+			const c = Math.floor(x / CELL);
+			const r = Math.floor(y / CELL);
+			if (c < 1 || r < 1 || c >= cols - 1 || r >= rows - 1) return;
+			val[r * cols + c] += RIPPLE_STRENGTH;
+		};
+
+		const update = () => {
+			// Ripple: discrete wave equation, then rotate buffers
+			for (let r = 1; r < rows - 1; r++) {
+				for (let c = 1; c < cols - 1; c++) {
+					const i = r * cols + c;
+					next[i] = ((val[i - 1] + val[i + 1] + val[i - cols] + val[i + cols]) / 2 - prev[i]) * RIPPLE_DAMPING;
+				}
+			}
+			[prev, val, next] = [val, next, prev];
+
+			for (const q of particles) {
+				// Repel from the cursor
+				if (pointer.inside) {
+					const dx = q.x + CELL / 2 - pointer.x;
+					const dy = q.y + CELL / 2 - pointer.y;
+					const d = Math.hypot(dx, dy);
+					if (d < REPEL_RADIUS && d > 0.01) {
+						const f = (1 - d / REPEL_RADIUS) * REPEL_FORCE;
+						q.vx += (dx / d) * f;
+						q.vy += (dy / d) * f;
+					}
+				}
+				// Ripples nudge pixels down the slope of the wave they sit on
+				const c = Math.min(cols - 2, Math.max(1, Math.round(q.x / CELL)));
+				const r = Math.min(rows - 2, Math.max(1, Math.round(q.y / CELL)));
+				const i = r * cols + c;
+				q.vx -= ((val[i + 1] - val[i - 1]) / 2) * RIPPLE_PUSH;
+				q.vy -= ((val[i + cols] - val[i - cols]) / 2) * RIPPLE_PUSH;
+				// Spring home, with friction so it settles
+				q.vx = (q.vx + (q.hx - q.x) * HEAL) * FRICTION;
+				q.vy = (q.vy + (q.hy - q.y) * HEAL) * FRICTION;
+				q.x += q.vx;
+				q.y += q.vy;
+			}
+		};
+
+		const draw = () => {
+			const size = CELL - GAP;
+			const offset = GAP / 2;
+			ctx.clearRect(0, 0, w, h);
+			ctx.fillStyle = COLOR;
+			for (let r = 0; r < rows; r++) {
+				for (let c = 0; c < cols; c++) {
+					const wave = Math.min(1, Math.abs(val[r * cols + c]));
+					ctx.globalAlpha = BASE_ALPHA + (RIPPLE_MAX_ALPHA - BASE_ALPHA) * wave;
+					ctx.fillRect(c * CELL + offset, r * CELL + offset, size, size);
+				}
+			}
+			for (const q of particles) {
+				ctx.globalAlpha = BASE_ALPHA + (1 - BASE_ALPHA) * q.v;
+				ctx.fillRect(Math.round(q.x / CELL) * CELL + offset, Math.round(q.y / CELL) * CELL + offset, size, size);
+			}
+			ctx.globalAlpha = 1;
+		};
+
+		// Settled once the cursor is gone, the waves have died down and every pixel is home
+		const isIdle = () => {
+			if (pointer.inside) return false;
+			for (let i = 0; i < val.length; i++) if (Math.abs(val[i]) > 0.004) return false;
+			for (const q of particles) {
+				if (Math.abs(q.x - q.hx) > 0.3 || Math.abs(q.y - q.hy) > 0.3 || Math.abs(q.vx) + Math.abs(q.vy) > 0.05) return false;
+			}
+			return true;
+		};
+
+		const frame = () => {
+			// Page navigated away: stop and let it be garbage collected
+			if (!canvas.isConnected) {
+				resizeObserver.disconnect();
+				running = false;
+				return;
+			}
+			update();
+			if (isIdle()) {
+				// Snap exactly home and clear the field so the resting image is crisp
+				for (const q of particles) Object.assign(q, { x: q.hx, y: q.hy, vx: 0, vy: 0 });
+				val.fill(0);
+				prev.fill(0);
+				draw();
+				running = false;
+				return;
+			}
+			draw();
+			requestAnimationFrame(frame);
+		};
+
+		const start = () => {
+			if (running || reducedMotion) return;
+			running = true;
+			requestAnimationFrame(frame);
+		};
+
+		const resizeObserver = new ResizeObserver(resize);
+		resizeObserver.observe(canvas);
+		if (reducedMotion) return;
+
+		const localPos = (e: PointerEvent) => {
+			const rect = canvas.getBoundingClientRect();
+			return [e.clientX - rect.left, e.clientY - rect.top];
+		};
+		canvas.addEventListener("pointermove", (e) => {
+			const [x, y] = localPos(e);
+			// Interpolate along the path so fast movements still leave a continuous wake
+			const fromX = pointer.lastX ?? x;
+			const fromY = pointer.lastY ?? y;
+			const steps = Math.max(1, Math.ceil(Math.hypot(x - fromX, y - fromY) / (CELL / 2)));
+			for (let s = 1; s <= steps; s++) {
+				disturb(fromX + ((x - fromX) * s) / steps, fromY + ((y - fromY) * s) / steps);
+			}
+			Object.assign(pointer, { x, y, inside: true, lastX: x, lastY: y });
+			start();
+		});
+		canvas.addEventListener("pointerleave", () => {
+			Object.assign(pointer, { inside: false, lastX: null, lastY: null });
+		});
+	}
+
+	// Runs on first load and after every view-transition navigation
+	document.addEventListener("astro:page-load", () => {
+		document.querySelectorAll<HTMLCanvasElement>("canvas.coffee-grid:not([data-ready])").forEach(mount);
+	});
+</script>
