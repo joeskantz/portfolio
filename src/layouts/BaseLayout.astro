@@ -1,7 +1,7 @@
 ---
 import "@fortawesome/fontawesome-free/css/all.min.css";
 const { title = "Joseph Skantz" } = Astro.props;
-import { ViewTransitions } from "astro:transitions";
+import { ClientRouter } from "astro:transitions";
 import Hyperspace from "../components/Hyperspace.astro";
 const pathname = Astro.url.pathname;
 ---
@@ -9,7 +9,7 @@ const pathname = Astro.url.pathname;
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<ViewTransitions />
+		<ClientRouter />
 		<link rel="preload" href="/space.png" as="image" />
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />

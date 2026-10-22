@@ -2,7 +2,10 @@
 // Pixel-art coffee cup for the "More coming soon" card, ported from
 // sandbox/pixel-grid.html. The cup's pixels are pushed away by the cursor and slowly
 // spring back (repel & heal), while cursor movement sends ripples across the grid
-// behind it; the ripples also jostle the cup. Static for reduced-motion visitors.
+// behind it; the ripples also jostle the cup. While the cursor is away, a slow
+// enchantment-style glint (soft bands of light, slowly warping and flowing) plays
+// across the background to hint that it's interactive. Static for reduced-motion
+// visitors.
 ---
 
 <canvas class="coffee-grid" aria-hidden="true"></canvas>
@@ -30,6 +33,24 @@
 	const RIPPLE_STRENGTH = 0.5; // energy added per step of cursor movement
 	const RIPPLE_PUSH = 1.2;    // how hard the waves shove the cup's pixels
 
+	// Idle glint: each layer is a repeating soft band of light, like an enchantment
+	// shimmer. The space each layer is drawn in is slowly bent and churned, so the bands
+	// twist and flow around the card; layers point different ways and brighten where
+	// they overlap.
+	//   angle:   direction the bands face, in degrees (0 = vertical bands)
+	//   spacing: px between bands   width: px wide
+	//   drift:   px per second the bands slide along their angle (negative = the other way)
+	//   warp:    px the distortion bends them
+	//   strength: brightness, 0-1
+	const GLINT_LAYERS = [
+		{ angle: 0, spacing: 150, width: 60, drift: 6, warp: 22, strength: 0.2 },
+		{ angle: 115, spacing: 110, width: 34, drift: -5, warp: 16, strength: 0.14 },
+		{ angle: 55, spacing: 220, width: 90, drift: 4, warp: 28, strength: 0.1 },
+	];
+	const GLINT_FLOW = 0.5;     // how fast the distortion churns
+	const GLINT_SHIMMER = 0.4;  // 0 = even brightness along a band, 1 = parts of it fade out completely
+	const GLINT_FADE = 0.03;    // per frame; how quickly the glint fades out/in as the cursor enters/leaves
+
 	// One character per pixel: "+" highlight, "#" body, "o" shadowed edge,
 	// "h" handle, "-" saucer, "~" steam
 	const CUP_ART = [
@@ -52,6 +73,32 @@
 
 	type Particle = { hx: number; hy: number; x: number; y: number; vx: number; vy: number; v: number };
 
+	const GLINT_DIRS = GLINT_LAYERS.map(({ angle }) => [Math.cos((angle * Math.PI) / 180), Math.sin((angle * Math.PI) / 180)]);
+
+	// Brightness of the glint at one spot
+	const glintAt = (x: number, y: number, time: number) => {
+		const flow = time * GLINT_FLOW;
+		let g = 0;
+		for (let n = 0; n < GLINT_LAYERS.length; n++) {
+			const { spacing, width, drift, warp, strength } = GLINT_LAYERS[n];
+			const seed = n * 2.1; // so each layer distorts differently
+			// Bend the space with slow sine waves, then bend it again by the result
+			const qx = x + warp * Math.sin(y * 0.035 + flow * 0.9 + seed);
+			const qy = y + warp * Math.sin(x * 0.03 - flow * 0.7 + seed * 1.7);
+			const wx = qx + warp * 0.5 * Math.sin(qy * 0.06 - flow * 1.3 + seed * 2.3);
+			const wy = qy + warp * 0.5 * Math.sin(qx * 0.055 + flow * 1.1 + seed * 0.6);
+			// Position across this layer's bands, then distance from the nearest band's center
+			const u = wx * GLINT_DIRS[n][0] + wy * GLINT_DIRS[n][1] - drift * time;
+			const p = ((u % spacing) + spacing) % spacing;
+			const d = Math.abs(p - spacing / 2);
+			if (d < width / 2) {
+				const flicker = 0.5 + 0.5 * Math.sin(x * 0.04 + y * 0.05 + flow * 1.5 + seed);
+				g += strength * (1 - GLINT_SHIMMER * flicker) * (0.5 + 0.5 * Math.cos((2 * Math.PI * d) / width));
+			}
+		}
+		return g;
+	};
+
 	function mount(canvas: HTMLCanvasElement) {
 		canvas.dataset.ready = "true";
 		const ctx = canvas.getContext("2d")!;
@@ -65,9 +112,12 @@
 		let val = new Float32Array(0);
 		let prev = new Float32Array(0);
 		let next = new Float32Array(0);
+		let cupMask = new Uint8Array(0); // 1 where a cup pixel rests; the glint isn't drawn there
 		let particles: Particle[] = [];
 		const pointer = { x: 0, y: 0, inside: false, lastX: null as number | null, lastY: null as number | null };
 		let running = false;
+		let visible = false;
+		let glintLevel = 0; // 0 = hidden, 1 = full; eases toward 1 while the cursor is away
 
 		const resize = () => {
 			const dpr = window.devicePixelRatio || 1;
@@ -83,6 +133,7 @@
 			val = new Float32Array(cols * rows);
 			prev = new Float32Array(cols * rows);
 			next = new Float32Array(cols * rows);
+			cupMask = new Uint8Array(cols * rows);
 
 			// Largest whole-number scale that fits keeps the art crisp
 			const artW = Math.max(...CUP_ART.map((line) => line.length));
@@ -100,6 +151,9 @@
 							const hx = (ox + x * scale + sx) * CELL;
 							const hy = (oy + y * scale + sy) * CELL;
 							particles.push({ hx, hy, x: hx, y: hy, vx: 0, vy: 0, v });
+							const mc = hx / CELL;
+							const mr = hy / CELL;
+							if (mc >= 0 && mc < cols && mr >= 0 && mr < rows) cupMask[mr * cols + mc] = 1;
 						}
 					}
 				}
@@ -116,6 +170,9 @@
 		};
 
 		const update = () => {
+			// Glint fades out while the cursor is on the grid and back in once it leaves
+			glintLevel += ((pointer.inside ? 0 : 1) - glintLevel) * GLINT_FADE;
+
 			// Ripple: discrete wave equation, then rotate buffers
 			for (let r = 1; r < rows - 1; r++) {
 				for (let c = 1; c < cols - 1; c++) {
@@ -154,12 +211,16 @@
 		const draw = () => {
 			const size = CELL - GAP;
 			const offset = GAP / 2;
+			const time = performance.now() / 1000;
+			const showGlint = glintLevel > 0.001;
 			ctx.clearRect(0, 0, w, h);
 			ctx.fillStyle = COLOR;
 			for (let r = 0; r < rows; r++) {
 				for (let c = 0; c < cols; c++) {
-					const wave = Math.min(1, Math.abs(val[r * cols + c]));
-					ctx.globalAlpha = BASE_ALPHA + (RIPPLE_MAX_ALPHA - BASE_ALPHA) * wave;
+					const i = r * cols + c;
+					let light = Math.abs(val[i]);
+					if (showGlint && !cupMask[i]) light += glintLevel * glintAt(c * CELL, r * CELL, time);
+					ctx.globalAlpha = BASE_ALPHA + (RIPPLE_MAX_ALPHA - BASE_ALPHA) * Math.min(1, light);
 					ctx.fillRect(c * CELL + offset, r * CELL + offset, size, size);
 				}
 			}
@@ -170,33 +231,19 @@
 			ctx.globalAlpha = 1;
 		};
 
-		// Settled once the cursor is gone, the waves have died down and every pixel is home
-		const isIdle = () => {
-			if (pointer.inside) return false;
-			for (let i = 0; i < val.length; i++) if (Math.abs(val[i]) > 0.004) return false;
-			for (const q of particles) {
-				if (Math.abs(q.x - q.hx) > 0.3 || Math.abs(q.y - q.hy) > 0.3 || Math.abs(q.vx) + Math.abs(q.vy) > 0.05) return false;
-			}
-			return true;
-		};
-
+		// The glint keeps the grid animating whenever it's on screen
 		const frame = () => {
 			// Page navigated away: stop and let it be garbage collected
 			if (!canvas.isConnected) {
-				resizeObserver.disconnect();
+				teardown();
+				return;
+			}
+			// Scrolled off screen: pause until it's visible again
+			if (!visible) {
 				running = false;
 				return;
 			}
 			update();
-			if (isIdle()) {
-				// Snap exactly home and clear the field so the resting image is crisp
-				for (const q of particles) Object.assign(q, { x: q.hx, y: q.hy, vx: 0, vy: 0 });
-				val.fill(0);
-				prev.fill(0);
-				draw();
-				running = false;
-				return;
-			}
 			draw();
 			requestAnimationFrame(frame);
 		};
@@ -210,6 +257,19 @@
 		const resizeObserver = new ResizeObserver(resize);
 		resizeObserver.observe(canvas);
 		if (reducedMotion) return;
+
+		const visibilityObserver = new IntersectionObserver(([entry]) => {
+			visible = entry.isIntersecting;
+			if (visible) start();
+		});
+		visibilityObserver.observe(canvas);
+
+		const teardown = () => {
+			resizeObserver.disconnect();
+			visibilityObserver.disconnect();
+			running = false;
+		};
+		document.addEventListener("astro:after-swap", teardown, { once: true });
 
 		const localPos = (e: PointerEvent) => {
 			const rect = canvas.getBoundingClientRect();
