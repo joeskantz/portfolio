@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import BuilderGrid from "../components/BuilderGrid.astro";
 ---
 
 <BaseLayout title="Joseph Skantz">
@@ -54,8 +55,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                 </div>
             </article>
 
-            <div class="placeholder-card" aria-hidden="true">
-                <p>More projects coming soon...</p>
+            <div class="scene-card" role="img" aria-label="More projects coming soon: a pixel-art developer writes code, starts a training run on a huge GPU, and drinks a coffee while it trains.">
+                <BuilderGrid scene="code" />
             </div>
         </div>
     </div>
@@ -185,17 +186,24 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             color: rgba(229, 231, 235, 0.70);
             letter-spacing: 0.01em;
         }
-        .placeholder-card {
-            padding: 18px 20px;
+        /* Pixel-art "more coming soon" card: as wide as a project card and filled by the animated grid */
+        .scene-card {
+            container-type: inline-size;
             border-radius: 24px;
-            border: 1px dashed rgba(255, 255, 255, 0.18);
-            background: rgba(0, 0, 0, 0.18);
-            color: rgba(229, 231, 235, 0.65);
-            text-align: center;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: #0f172a;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
         }
-        .placeholder-card p {
-            margin: 0;
-            font-size: 0.95rem;
+        /* 206px + the border matches the project cards above (~206-211px, set by their text) */
+        .scene-card :global(.builder-grid) {
+            height: 206px;
+        }
+        /* Under 543px wide the scene drops to half size (MIN_WIDTH in coderScene.ts), so the card can be shorter */
+        @container (max-width: 542px) {
+            .scene-card :global(.builder-grid) {
+                height: 122px;
+            }
         }
         @media (max-width: 700px) {
             .project-card {
